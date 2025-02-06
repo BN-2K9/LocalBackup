@@ -1,0 +1,9 @@
+name: LocalBackup
+version: '0.01'
+main: com.bn_2k9.localBackup.LocalBackup
+api-version: '1.20'
+authors: [ BN_2K9 ]
+description: An Great Backup Plugin!
+commands:
+  localBackup:
+    aliases: lb

@@ -1,0 +1,10 @@
+## The Plugin Prefix
+PluginPrefix: "&eLocal &aBackup &8>> "
+## The hour that the backup should be made!
+DailyBackupTime: 3
+## The max Amount of backups before the last one get's deleted!
+MaxBackups: 3
+## All the messages.
+Messages:
+  Help:
+    - "&a/lb backup &f- &8Backup The Server!"
