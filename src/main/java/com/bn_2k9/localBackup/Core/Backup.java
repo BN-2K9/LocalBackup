@@ -9,12 +9,19 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.io.*;
-import java.nio.file.FileSystemException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.chrono.ChronoLocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.commons.io.FileUtils.copyDirectory;
+import static org.apache.commons.io.FileUtils.copyDirectoryToDirectory;
 
 public class Backup {
 
@@ -87,49 +94,50 @@ public class Backup {
 
         }
 
-        String FolderPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath().replace("LocalBackup", "").replace("plugins", "").trim();
+        String FolderPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath().replace("LocalBackup", "").replace("plugins", "").replace(File.separator+File.separator, File.separator);
         Bukkit.getLogger().info(FolderPath);
         File Folder = new File(FolderPath);
         String BackupFolderPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + LocalDateTime.now().toString().replace(":", "x").replace(".", "z") + "/";
         File OutputFolder = new File(BackupFolderPath);
-        OutputFolder.mkdirs();
 
         Bukkit.getScheduler().runTaskAsynchronously(LocalBackup.getInstance(), () -> {
 
-            //try {
-            //                FileUtils.copyDirectory(Folder, OutputFolder);
-            //            } catch (IOException e) {
-            //                throw new RuntimeException(e);
-            //            }
+            OutputFolder.mkdirs();
+            try {
+                Files.walkFileTree(Paths.get(Folder.getAbsolutePath()), new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 
-            for (String f : Folder.list()) {
-                File source = (new File(Folder, f));
+                        if (!Files.isDirectory(file)) {
+                            String path = file.toFile().getAbsolutePath().replace(Folder.getAbsolutePath(), "");
+                            Bukkit.getLogger().info(path);
 
-                Bukkit.getLogger().info(source.getAbsolutePath());
-                Bukkit.getLogger().info(source.getName());
+                            if (path.contains("session.lock") || path.contains("LocalBackup")) {
+                                Logger.LogInfo("Skipping Found Blacklisted File");
+                            } else {
+                                File newfile = new File(OutputFolder + File.separator + path);
+                                FileUtils.copyFile(file.toFile(), newfile);
+                            }
+                        } else {
+                            String path = file.toFile().getAbsolutePath().replace(Folder.getAbsolutePath(), "");
+                            Bukkit.getLogger().info(path);
 
-                if (source.isDirectory()) {
-                    if (!source.getAbsolutePath().contains("LocalBackup")) {
-                        try {
-                            copyDirectory(source, OutputFolder);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
+                            if (path.contains("session.lock") || path.contains("LocalBackup")) {
+                                Logger.LogInfo("Skipping Found Blacklisted File");
+                            } else {
+                                File newfile = new File(OutputFolder + File.separator + path);
+                                FileUtils.copyDirectory(file.toFile(), newfile);
+                            }
                         }
-                    }
 
-                } else {
-                    if (!source.getAbsolutePath().contains("session.lock")) {
-                        try {
-                            FileUtils.copyFile(source, OutputFolder);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
+                        return FileVisitResult.CONTINUE;
                     }
-                }
-
+                });
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
 
-            Bukkit.getServer().reload();
+            Bukkit.getServer().spigot().restart();
 
             Logger.LogInfo("&aCopy Completed! Duration: " + (System.nanoTime()-start));
 
