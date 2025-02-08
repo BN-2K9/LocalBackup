@@ -5,6 +5,9 @@ DailyBackupTime: 3
 ## The max Amount of backups before the last one get's deleted!
 MaxBackups: 3
 ## All the messages.
+BlackListedNames:
+  #- "LocalBackup" For Example for a folder name. (You can Remove this Value If You Like. These Names Are BlackListed By Default)
+  #- "session.lock" Or An File with a file Extension. (You can Remove this Value If You Like. These Names Are BlackListed By Default)
 Messages:
   Help:
     - "&a/lb backup &f- &8Backup The Server!"
