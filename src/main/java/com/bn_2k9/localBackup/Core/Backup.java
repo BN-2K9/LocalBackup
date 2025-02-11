@@ -25,12 +25,16 @@ public class Backup {
 
             LocalTime currentTime = LocalTime.now();
 
-            if (currentTime.getHour() == LocalBackup.getInstance().getConfig().getInt("DailyBackupTime")) {
+            Bukkit.getLogger().info(LocalBackup.getInstance().getConfig().getString("DailyBackupTime"));
+            Bukkit.getLogger().info(currentTime.getHour() + ":" + currentTime.getMinute());
+
+            String time = currentTime.getHour() + ":" + currentTime.getMinute();
+            if (time.equals(LocalBackup.getInstance().getConfig().getString("DailyBackupTime"))) {
                 SaveBackup();
             }
 
 
-        }, 20 * 16,20 * 3600);
+        }, 20 * 16,20 * 50);
 
     }
 
@@ -63,7 +67,7 @@ public class Backup {
             new File(BackupFolder).mkdirs();
         } else {
             String[] names = new File(BackupFolder).list();
-            if (names.length >= LocalBackup.getInstance().getConfig().getInt("MaxBackups")) {
+            if (names.length >= LocalBackup.getInstance().getConfig().getInt("MaxBackups") - 1) {
                 Logger.LogInfo("Max Backups Reached Removing Oldest File.");
                 String FileToDelete = null;
                 for (String name : names) {
@@ -79,13 +83,17 @@ public class Backup {
                 }
 
 
-                FileToDelete.replace(":", "x").replace(".", "z");
-                File delete = new File(LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + FileToDelete);
+                FileToDelete = FileToDelete.replace(":", "x").replace(".", "z");
+                Bukkit.getLogger().info(FileToDelete);
+
                 try {
-                    FileUtils.deleteDirectory(delete);
+                    FileUtils.touch(new File((LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + FileToDelete)));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
+                File fileToDelete = FileUtils.getFile((LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + FileToDelete));
+                boolean success = FileUtils.deleteQuietly(fileToDelete);
+
             }
 
         }
