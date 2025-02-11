@@ -1,6 +1,7 @@
 ## The Plugin Prefix
 PluginPrefix: "&eLocal &aBackup &8>> "
 ## The hour that the backup should be made!
+## The Time is in gmt. So 11 in the config would be 12 in reallife
 DailyBackupTime: 3
 ## The max Amount of backups before the last one get's deleted!
 MaxBackups: 3
