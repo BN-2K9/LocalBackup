@@ -30,7 +30,7 @@ public class Backup {
             }
 
 
-        }, 20 * 6,20 * 1900);
+        }, 20 * 6,20 * 3600);
 
     }
 
@@ -108,28 +108,29 @@ public class Backup {
                         BlackListedNames.add("LocalBackup");
                         BlackListedNames.add("session.lock");
 
-                        if (!Files.isDirectory(file)) {
-                            String path = file.toFile().getAbsolutePath().replace(Folder.getAbsolutePath(), "");
+                        String path = file.toFile().getAbsolutePath().replace(Folder.getAbsolutePath(), "");
 
-                            for (String BlackListedName: BlackListedNames) {
-                                if (path.contains(BlackListedName)) {
-                                    Logger.LogInfo("Skipping Found Blacklisted File");
-                                } else {
+                        Boolean contains = false;
+
+                        for (String BlackListedName: BlackListedNames) {
+                            if (path.contains(BlackListedName)) {
+                                contains = true;
+                            }
+                        }
+
+                        if (contains) {
+                            Logger.LogInfo("Skipping Found Blacklisted File");
+                        } else {
+                            if (Files.exists(file)) {
+                                if (!Files.isDirectory(file)) {
                                     File newfile = new File(OutputFolder + File.separator + path);
                                     FileUtils.copyFile(file.toFile(), newfile);
-                                }
-                            }
-                        } else {
-                            String path = file.toFile().getAbsolutePath().replace(Folder.getAbsolutePath(), "");
-
-                            for (String BlackListedName: BlackListedNames) {
-                                if (path.contains(BlackListedName)) {
-                                    Logger.LogInfo("Skipping Found Blacklisted File");
                                 } else {
                                     File newfile = new File(OutputFolder + File.separator + path);
                                     FileUtils.copyDirectory(file.toFile(), newfile);
                                 }
                             }
+
                         }
 
                         return FileVisitResult.CONTINUE;
