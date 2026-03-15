@@ -7,14 +7,20 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.*;
+import java.io.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.chrono.ChronoLocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 
 public class Backup {
@@ -98,60 +104,82 @@ public class Backup {
 
         }
 
-        String FolderPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath().replace("LocalBackup", "").replace("plugins", "").replace(File.separator+File.separator, File.separator);
-        File Folder = new File(FolderPath);
-        String BackupFolderPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + LocalDateTime.now().toString().replace(":", "x").replace(".", "z") + "/";
-        File OutputFolder = new File(BackupFolderPath);
+        String FolderPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath()
+                .replace("LocalBackup", "")
+                .replace("plugins", "")
+                .replace(File.separator + File.separator, File.separator);
 
-        // Runs The Backup Async So it Doesn't Time Out The Main Thread.
+        File Folder = new File(FolderPath);
+
+        String BackupZipPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath()
+                + "/Backups/"
+                + LocalDateTime.now().toString().replace(":", "x").replace(".", "z")
+                + ".zip";
+
+        File ZipFile = new File(BackupZipPath);
+
         Bukkit.getScheduler().runTaskAsynchronously(LocalBackup.getInstance(), () -> {
 
-            OutputFolder.mkdirs();
             try {
-                Files.walkFileTree(Paths.get(Folder.getAbsolutePath()), new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                ZipFile.getParentFile().mkdirs();
 
-                        List<String> BlackListedNames = LocalBackup.getInstance().getConfig().getStringList("BlackListedNames");
-                        BlackListedNames.add("LocalBackup");
-                        BlackListedNames.add("session.lock");
+                Path basePath = Folder.toPath();
 
-                        String path = file.toFile().getAbsolutePath().replace(Folder.getAbsolutePath(), "");
+                List<String> blackListedNames = new ArrayList<>(
+                        LocalBackup.getInstance().getConfig().getStringList("BlackListedNames")
+                );
 
-                        Boolean contains = false;
+                blackListedNames.add("LocalBackup");
+                blackListedNames.add("session.lock");
 
-                        for (String BlackListedName: BlackListedNames) {
-                            if (path.contains(BlackListedName)) {
-                                contains = true;
-                            }
-                        }
+                byte[] buffer = new byte[65536];
 
-                        if (contains) {
-                            Logger.LogInfo("Skipping Found Blacklisted File");
-                        } else {
-                            if (Files.exists(file)) {
-                                if (!Files.isDirectory(file)) {
-                                    File newfile = new File(OutputFolder + File.separator + path);
-                                    FileUtils.copyFile(file.toFile(), newfile);
-                                } else {
-                                    File newfile = new File(OutputFolder + File.separator + path);
-                                    FileUtils.copyDirectory(file.toFile(), newfile);
+                try (ZipOutputStream zos = new ZipOutputStream(
+                        new BufferedOutputStream(new FileOutputStream(ZipFile))
+                )) {
+
+                    zos.setLevel(Deflater.BEST_COMPRESSION);
+
+                    Files.walkFileTree(basePath, new SimpleFileVisitor<Path>() {
+
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+
+                            Path relative = basePath.relativize(file);
+                            String path = relative.toString().replace("\\", "/");
+
+                            for (String name : blackListedNames) {
+                                if (path.contains(name)) {
+                                    return FileVisitResult.CONTINUE;
                                 }
                             }
 
+                            ZipEntry entry = new ZipEntry(path);
+                            zos.putNextEntry(entry);
+
+                            try (InputStream is = Files.newInputStream(file)) {
+                                int len;
+                                while ((len = is.read(buffer)) > 0) {
+                                    zos.write(buffer, 0, len);
+                                }
+                            }
+
+                            zos.closeEntry();
+
+                            return FileVisitResult.CONTINUE;
                         }
 
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
+                    });
+
+                }
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
-            Logger.LogInfo("&aCopy Completed! Duration: " + (System.nanoTime()-start));
+            Logger.LogInfo("&aBackup completed! Duration: " + (System.nanoTime() - start));
 
             Bukkit.getServer().spigot().restart();
-
         });
     }
 

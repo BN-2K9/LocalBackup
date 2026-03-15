@@ -1,4 +1,4 @@
-## The Plugin Prefix
+ ## The Plugin Prefix
 PluginPrefix: "&eLocal &aBackup &8>> "
 ## The hour that the backup should be made!
 DailyBackupTime: "12:25"
