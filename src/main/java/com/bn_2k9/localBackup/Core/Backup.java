@@ -31,9 +31,6 @@ public class Backup {
 
             LocalTime currentTime = LocalTime.now();
 
-            Bukkit.getLogger().info(LocalBackup.getInstance().getConfig().getString("DailyBackupTime"));
-            Bukkit.getLogger().info(currentTime.getHour() + ":" + currentTime.getMinute());
-
             String time = currentTime.getHour() + ":" + currentTime.getMinute();
             if (time.equals(LocalBackup.getInstance().getConfig().getString("DailyBackupTime"))) {
                 SaveBackup();
@@ -46,9 +43,11 @@ public class Backup {
 
     public void SaveBackup() {
 
+        // Make sure all the player data is saved.
         Bukkit.getServer().savePlayers();
         Logger.LogInfo("Saved Players!");
 
+        // Kick everyone.
         for (Player player: Bukkit.getOnlinePlayers()) {
             player.kickPlayer("Restarting For Backup!");
         }
@@ -65,12 +64,12 @@ public class Backup {
             Logger.LogInfo("Saved: " + world.getName());
         }
 
-        Long start = System.nanoTime();
+        long start = System.nanoTime();
 
         String BackupFolder = LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups";
 
         if (!new File(BackupFolder).exists()) {
-            new File(BackupFolder).mkdirs();
+            boolean succes = new File(BackupFolder).mkdirs();
         } else {
             String[] names = new File(BackupFolder).list();
             if (names.length >= LocalBackup.getInstance().getConfig().getInt("MaxBackups") - 1) {
@@ -87,7 +86,6 @@ public class Backup {
                         }
                     }
                 }
-
 
                 FileToDelete = FileToDelete.replace(":", "x").replace(".", "z");
                 Bukkit.getLogger().info(FileToDelete);

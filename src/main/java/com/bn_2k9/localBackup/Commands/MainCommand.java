@@ -1,5 +1,6 @@
-package com.bn_2k9.localBackup.Core;
+package com.bn_2k9.localBackup.Commands;
 
+import com.bn_2k9.localBackup.Core.Backup;
 import com.bn_2k9.localBackup.LocalBackup;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -8,7 +9,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Command implements TabExecutor {
+public class MainCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, org.bukkit.command.Command command, String label, String[] args) {
@@ -33,10 +34,7 @@ public class Command implements TabExecutor {
     @Override
     public List<String> onTabComplete (CommandSender sender, org.bukkit.command.Command command, String alias, String[]args){
         if (args.length == 1) { //prank <subcommand> <args>
-            ArrayList<String> subcommandsArguments = new ArrayList<>();
-
-            subcommandsArguments.add("backup");
-
+            List<String> subcommandsArguments = List.of("backup");
             return subcommandsArguments;
         }
         return null;

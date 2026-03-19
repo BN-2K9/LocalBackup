@@ -1,7 +1,7 @@
 package com.bn_2k9.localBackup;
 
 import com.bn_2k9.localBackup.Core.Backup;
-import com.bn_2k9.localBackup.Core.Command;
+import com.bn_2k9.localBackup.Commands.MainCommand;
 import com.bn_2k9.localBackup.Utils.Logger;
 import lombok.Getter;
 import org.bukkit.ChatColor;
@@ -37,7 +37,7 @@ public final class LocalBackup extends JavaPlugin {
 
     public void InitClasses() {
         backup = new Backup();
-        getCommand("localBackup").setExecutor(new Command());
+        getCommand("localBackup").setExecutor(new MainCommand());
     }
 
     public static void displayHelp(String Path, Player e) {
