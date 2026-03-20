@@ -52,10 +52,8 @@ public class Backup {
             player.kickPlayer("Restarting For Backup!");
         }
 
-        // This Disables LuckPerms So When We Take An Backup It Doesn't Error Out.
-        if (Bukkit.getServer().getPluginManager().getPlugin("luckperms") != null) {
-            Bukkit.getServer().getPluginManager().getPlugin("luckperms").onDisable();
-        }
+        // Make sure all the plugins are disabled.
+        Bukkit.getServer().getPluginManager().disablePlugins();
 
         // Unload All Worlds To Prevent Corruption.
         for (World world :Bukkit.getServer().getWorlds()) {
