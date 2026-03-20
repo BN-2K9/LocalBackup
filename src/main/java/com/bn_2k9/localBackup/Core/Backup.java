@@ -77,17 +77,17 @@ public class Backup {
                 String FileToDelete = null;
                 for (String name : names) {
                     LocalDateTime currentDateTime = LocalDateTime.now();
-                    ChronoLocalDateTime fileTime = LocalDateTime.parse(name.replace("x", ":").replace("z", "."));
+                    ChronoLocalDateTime fileTime = LocalDateTime.parse(name.replace("x", ":").replace("q", "."));
                     if (FileToDelete == null) {
-                        FileToDelete = name.replace("x", ":").replace("z", ".");
+                        FileToDelete = name.replace("x", ":").replace("q", ".");
                     } else {
                         if (currentDateTime.isAfter(fileTime) && LocalDateTime.parse(FileToDelete).isAfter(fileTime)) {
-                            FileToDelete = name.replace("x", ":").replace("z", ".");
+                            FileToDelete = name.replace("x", ":").replace("q", ".");
                         }
                     }
                 }
 
-                FileToDelete = FileToDelete.replace(":", "x").replace(".", "z");
+                FileToDelete = FileToDelete.replace(":", "x").replace(".", "q");
                 Bukkit.getLogger().info(FileToDelete);
 
                 try {
@@ -111,7 +111,7 @@ public class Backup {
 
         String BackupZipPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath()
                 + "/Backups/"
-                + LocalDateTime.now().toString().replace(":", "x").replace(".", "z")
+                + LocalDateTime.now().toString().replace(":", "x").replace(".", "q")
                 + ".zip";
 
         File ZipFile = new File(BackupZipPath);
