@@ -77,7 +77,7 @@ public class Backup {
                 String FileToDelete = null;
                 for (String name : names) {
                     LocalDateTime currentDateTime = LocalDateTime.now();
-                    ChronoLocalDateTime fileTime = LocalDateTime.parse(name.replace("x", ":").replace("q", "."));
+                    ChronoLocalDateTime fileTime = LocalDateTime.parse(name.replace("x", ":").replace("q", ".").replace(".zip", ""));
                     if (FileToDelete == null) {
                         FileToDelete = name.replace("x", ":").replace("q", ".");
                     } else {
