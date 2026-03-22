@@ -2,10 +2,12 @@ package com.bn_2k9.localBackup.Core;
 
 import com.bn_2k9.localBackup.LocalBackup;
 import com.bn_2k9.localBackup.Utils.Logger;
-import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.*;
 import java.nio.file.FileVisitResult;
@@ -15,9 +17,12 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.chrono.ChronoLocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -52,8 +57,15 @@ public class Backup {
             player.kickPlayer("Restarting For Backup!");
         }
 
-        // Make sure all the plugins are disabled.
-        Bukkit.getServer().getPluginManager().disablePlugins();
+        Plugin[] plugins = Bukkit.getServer().getPluginManager().getPlugins();
+
+        for (int i = plugins.length - 1; i >= 0; i--) {
+            Plugin plugin = plugins[i];
+
+            if (plugin != LocalBackup.getInstance()) {
+                Bukkit.getServer().getPluginManager().disablePlugin(plugin);
+            }
+        }
 
         // Unload All Worlds To Prevent Corruption.
         for (World world :Bukkit.getServer().getWorlds()) {
@@ -63,39 +75,19 @@ public class Backup {
         }
 
         long start = System.nanoTime();
-
         String BackupFolder = LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups";
 
         if (!new File(BackupFolder).exists()) {
             boolean succes = new File(BackupFolder).mkdirs();
         } else {
-            String[] names = new File(BackupFolder).list();
-            if (names.length >= LocalBackup.getInstance().getConfig().getInt("MaxBackups") - 1) {
-                Logger.LogInfo("Max Backups Reached Removing Oldest File.");
-                String FileToDelete = null;
-                for (String name : names) {
-                    LocalDateTime currentDateTime = LocalDateTime.now();
-                    ChronoLocalDateTime fileTime = LocalDateTime.parse(name.replace("x", ":").replace("q", ".").replace(".zip", ""));
-                    if (FileToDelete == null) {
-                        FileToDelete = name.replace("x", ":").replace("q", ".");
-                    } else {
-                        if (currentDateTime.isAfter(fileTime) && LocalDateTime.parse(FileToDelete).isAfter(fileTime)) {
-                            FileToDelete = name.replace("x", ":").replace("q", ".");
-                        }
-                    }
+            File[] files = new File(BackupFolder).listFiles();
+
+            if (files != null) {
+                Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+
+                if (files.length >= LocalBackup.getInstance().getConfig().getInt("MaxBackups")) {
+                    files[0].delete();
                 }
-
-                FileToDelete = FileToDelete.replace(":", "x").replace(".", "q");
-                Bukkit.getLogger().info(FileToDelete);
-
-                try {
-                    FileUtils.touch(new File((LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + FileToDelete)));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                File fileToDelete = FileUtils.getFile((LocalBackup.getInstance().getDataFolder().getAbsolutePath() + "/Backups/" + FileToDelete));
-                boolean success = FileUtils.deleteQuietly(fileToDelete);
-
             }
 
         }
@@ -107,6 +99,13 @@ public class Backup {
 
         File Folder = new File(FolderPath);
 
+        List<String> blackListedNames = new ArrayList<>(
+                LocalBackup.getInstance().getConfig().getStringList("BlackListedNames")
+        );
+
+        blackListedNames.add("LocalBackup");
+        blackListedNames.add("session.lock");
+
         String BackupZipPath = LocalBackup.getInstance().getDataFolder().getAbsolutePath()
                 + "/Backups/"
                 + LocalDateTime.now().toString().replace(":", "x").replace(".", "q")
@@ -114,21 +113,44 @@ public class Backup {
 
         File ZipFile = new File(BackupZipPath);
 
+        AtomicLong processedFiles = new AtomicLong(0);
+        AtomicLong oldPercentage = new AtomicLong(0);
+        AtomicLong totalFiles = new AtomicLong(0);
+
+        BukkitTask progressTask = Bukkit.getScheduler().runTaskTimerAsynchronously(LocalBackup.getInstance(), () -> {
+
+            double percent = totalFiles.get() == 0 ? 100 : (processedFiles.get() * 100.0) / totalFiles.get();
+
+            long currentPercent = (long) percent;
+
+            if (oldPercentage.get() != currentPercent && totalFiles.get() != 0) {
+                Logger.LogInfo("&eProgress: " + String.format("%.2f%% (%d/%d)", percent, processedFiles.get(), totalFiles.get()));
+                oldPercentage.set(currentPercent);
+            }
+
+        }, 20, 20);
+
         Bukkit.getScheduler().runTaskAsynchronously(LocalBackup.getInstance(), () -> {
+
+            try (Stream<Path> stream = Files.walk(Folder.toPath())) {
+                totalFiles.set(stream
+                        .filter(Files::isRegularFile)
+                        .filter(path -> {
+                            String p = Folder.toPath().relativize(path).toString().replace("\\", "/");
+                            for (String name : blackListedNames) {
+                                if (p.contains(name)) return false;
+                            }
+                            return true;
+                        })
+                        .count());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
 
             try {
                 ZipFile.getParentFile().mkdirs();
 
                 Path basePath = Folder.toPath();
-
-                List<String> blackListedNames = new ArrayList<>(
-                        LocalBackup.getInstance().getConfig().getStringList("BlackListedNames")
-                );
-
-                blackListedNames.add("LocalBackup");
-                blackListedNames.add("session.lock");
-
-                byte[] buffer = new byte[65536];
 
                 try (ZipOutputStream zos = new ZipOutputStream(
                         new BufferedOutputStream(new FileOutputStream(ZipFile))
@@ -136,16 +158,16 @@ public class Backup {
 
                     zos.setLevel(Deflater.BEST_COMPRESSION);
 
-                    Files.walkFileTree(basePath, new SimpleFileVisitor<Path>() {
+                    Files.walkFileTree(basePath, new SimpleFileVisitor<>() {
 
                         @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
 
                             Path relative = basePath.relativize(file);
                             String path = relative.toString().replace("\\", "/");
 
                             for (String name : blackListedNames) {
-                                if (path.contains(name)) {
+                                if (path.endsWith(name) || path.contains("/" + name)) {
                                     return FileVisitResult.CONTINUE;
                                 }
                             }
@@ -153,14 +175,12 @@ public class Backup {
                             ZipEntry entry = new ZipEntry(path);
                             zos.putNextEntry(entry);
 
-                            try (InputStream is = Files.newInputStream(file)) {
-                                int len;
-                                while ((len = is.read(buffer)) > 0) {
-                                    zos.write(buffer, 0, len);
-                                }
+                            try (InputStream inputStream = Files.newInputStream(file)) {
+                                inputStream.transferTo(zos);
                             }
 
                             zos.closeEntry();
+                            processedFiles.incrementAndGet();
 
                             return FileVisitResult.CONTINUE;
                         }
@@ -173,10 +193,12 @@ public class Backup {
                 throw new RuntimeException(e);
             }
 
+            progressTask.cancel();
             Logger.LogInfo("&aBackup completed! Duration: " + (System.nanoTime() - start));
+            Bukkit.getScheduler().runTask(LocalBackup.getInstance(), () -> Bukkit.getServer().spigot().restart());
 
-            Bukkit.getServer().spigot().restart();
         });
+
     }
 
     public static Backup getInstance() {
