@@ -10,7 +10,6 @@ import org.bukkit.scheduler.BukkitTask;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.*;
-import java.net.URLClassLoader;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,11 +64,6 @@ public class Backup {
 
             if (plugin != LocalBackup.getInstance()) {
                 Bukkit.getServer().getPluginManager().disablePlugin(plugin);
-                try {
-                    ((URLClassLoader) plugin.getClass().getClassLoader()).close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
             }
         }
 
