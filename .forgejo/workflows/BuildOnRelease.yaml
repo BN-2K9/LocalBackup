@@ -1,22 +1,56 @@
-name: Release
+name: Build & Release
+
 on:
   push:
     tags:
       - "v*"
+
 jobs:
   release:
     runs-on: docker
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        run: git clone $CI_REPOSITORY_URL repo && cd repo
 
-      - run: npm install
-      - run: npm run build
+      - name: Install deps
+        run: npm install
+
+      - name: Build
+        run: npm run build
 
       - name: Package
         run: tar -czf build.tar.gz dist/
 
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build.tar.gz
+      - name: Create Release via Forgejo API
+        env:
+          TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          TAG=${CI_COMMIT_TAG}
+
+          curl -X POST "$CI_SERVER_URL/api/v1/repos/$CI_REPOSITORY/releases" \
+            -H "Authorization: token $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"tag_name\": \"$TAG\",
+              \"name\": \"Release $TAG\"
+            }"
+
+      - name: Upload asset
+        env:
+          TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          TAG=${CI_COMMIT_TAG}
+
+          # release id ophalen
+          RELEASE_ID=$(curl -s \
+            -H "Authorization: token $TOKEN" \
+            "$CI_SERVER_URL/api/v1/repos/$CI_REPOSITORY/releases/tags/$TAG" \
+            | jq -r .id)
+
+          # upload bestand
+          curl -X POST \
+            -H "Authorization: token $TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @build.tar.gz \
+            "$CI_SERVER_URL/api/v1/repos/$CI_REPOSITORY/releases/$RELEASE_ID/assets?name=build.tar.gz"
