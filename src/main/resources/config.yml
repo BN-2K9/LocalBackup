@@ -2,7 +2,7 @@
 PluginPrefix: "&eLocal &aBackup &8>> "
 ## The hour that the backup should be made!
 DailyBackupTime: "12:25"
-## The max Amount of backups before the last one get's deleted!
+## The max Amount of backups before the last one gets deleted!
 MaxBackups: 3
 ## All the messages.
 BlackListedNames:

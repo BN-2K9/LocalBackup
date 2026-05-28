@@ -30,6 +30,12 @@ import java.util.zip.ZipOutputStream;
 
 public class Backup {
 
+    public static Boolean backupInProgress = false;
+
+    public BukkitTask asyncBackupTask = null;
+
+    public BukkitTask progressTask = null;
+
     public void InitBackupTimer() {
         // This Checks Every Half Hour if An Backup Is Needed.
         Bukkit.getScheduler().scheduleSyncRepeatingTask(LocalBackup.getInstance(), () -> {
@@ -41,12 +47,13 @@ public class Backup {
                 SaveBackup();
             }
 
-
         }, 20 * 16,20 * 50);
 
     }
 
     public void SaveBackup() {
+
+        backupInProgress = true;
 
         // Make sure all the player data is saved.
         Bukkit.getServer().savePlayers();
@@ -117,7 +124,7 @@ public class Backup {
         AtomicLong oldPercentage = new AtomicLong(0);
         AtomicLong totalFiles = new AtomicLong(0);
 
-        BukkitTask progressTask = Bukkit.getScheduler().runTaskTimerAsynchronously(LocalBackup.getInstance(), () -> {
+        progressTask = Bukkit.getScheduler().runTaskTimerAsynchronously(LocalBackup.getInstance(), () -> {
 
             double percent = totalFiles.get() == 0 ? 100 : (processedFiles.get() * 100.0) / totalFiles.get();
 
@@ -130,7 +137,7 @@ public class Backup {
 
         }, 20, 20);
 
-        Bukkit.getScheduler().runTaskAsynchronously(LocalBackup.getInstance(), () -> {
+        asyncBackupTask = Bukkit.getScheduler().runTaskAsynchronously(LocalBackup.getInstance(), () -> {
 
             try (Stream<Path> stream = Files.walk(Folder.toPath())) {
                 totalFiles.set(stream
@@ -158,7 +165,7 @@ public class Backup {
 
                     zos.setLevel(Deflater.BEST_COMPRESSION);
 
-                    Files.walkFileTree(basePath, new SimpleFileVisitor<>() {
+                    Path path = Files.walkFileTree(basePath, new SimpleFileVisitor<>() {
 
                         @Override
                         public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
@@ -199,6 +206,22 @@ public class Backup {
 
         });
 
+    }
+
+    public boolean cancelAsyncTasks() {
+
+        if (asyncBackupTask == null && progressTask == null) {
+            return true;
+        }
+
+        if (asyncBackupTask != null) {
+            asyncBackupTask.cancel();
+        }
+        if (progressTask != null) {
+            progressTask.cancel();
+        }
+
+        return asyncBackupTask.isCancelled() && progressTask.isCancelled();
     }
 
     public static Backup getInstance() {

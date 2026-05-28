@@ -2,8 +2,10 @@ package com.bn_2k9.localBackup;
 
 import com.bn_2k9.localBackup.Commands.MainCommand;
 import com.bn_2k9.localBackup.Core.Backup;
+import com.bn_2k9.localBackup.Listeners.JoinListener;
 import com.bn_2k9.localBackup.Utils.Logger;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,12 +34,16 @@ public final class LocalBackup extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        if (!Backup.getInstance().cancelAsyncTasks()) {
+            Logger.LogInfo("Error when canceling async tasks.");
+        }
     }
 
 
     public void InitClasses() {
         backup = new Backup();
         getCommand("localBackup").setExecutor(new MainCommand());
+        Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(), this);
     }
 
     public static void displayHelp(String Path, Player e) {
