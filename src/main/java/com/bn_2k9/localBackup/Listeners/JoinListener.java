@@ -4,14 +4,14 @@ import com.bn_2k9.localBackup.Core.Backup;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
 public class JoinListener implements Listener {
 
     @EventHandler (priority = EventPriority.LOWEST)
-    public void onJoin(PlayerJoinEvent event){
+    public void onJoin(AsyncPlayerPreLoginEvent event){
         if (Backup.backupInProgress) {
-            event.getPlayer().kickPlayer("Backup in progress.");
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "Backup in progress.");
         }
     }
 
