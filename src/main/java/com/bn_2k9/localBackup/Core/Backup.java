@@ -31,10 +31,10 @@ import java.util.zip.ZipOutputStream;
 public class Backup {
 
     public static Boolean backupInProgress = false;
-
     public BukkitTask asyncBackupTask = null;
-
     public BukkitTask progressTask = null;
+
+    boolean stopTasks = false;
 
     public void InitBackupTimer() {
         // This Checks Every Half Hour if An Backup Is Needed.
@@ -127,7 +127,6 @@ public class Backup {
         progressTask = Bukkit.getScheduler().runTaskTimerAsynchronously(LocalBackup.getInstance(), () -> {
 
             double percent = totalFiles.get() == 0 ? 100 : (processedFiles.get() * 100.0) / totalFiles.get();
-
             long currentPercent = (long) percent;
 
             if (oldPercentage.get() != currentPercent && totalFiles.get() != 0) {
@@ -170,6 +169,10 @@ public class Backup {
                         @Override
                         public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
 
+                            if (stopTasks) {
+                                return FileVisitResult.TERMINATE;
+                            }
+
                             Path relative = basePath.relativize(file);
                             String path = relative.toString().replace("\\", "/");
 
@@ -202,17 +205,18 @@ public class Backup {
 
             progressTask.cancel();
             Logger.LogInfo("&aBackup completed! Duration: " + (System.nanoTime() - start));
-            Bukkit.getScheduler().runTask(LocalBackup.getInstance(), () -> Bukkit.getServer().spigot().restart());
+            Bukkit.getScheduler().runTask(LocalBackup.getInstance(), () -> Bukkit.getServer().restart());
 
         });
 
     }
 
     public boolean cancelAsyncTasks() {
-
         if (asyncBackupTask == null && progressTask == null) {
             return true;
         }
+
+        stopTasks = true;
 
         if (asyncBackupTask != null) {
             asyncBackupTask.cancel();
